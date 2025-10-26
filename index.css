@@ -282,3 +282,31 @@ body {
     white-space: pre-wrap;
     overflow: auto;
 }
+
+
+/* --- Q&A slide transitions --- */
+@keyframes slideOutLeft  { from {opacity:1; transform:translateX(0)}   to {opacity:0; transform:translateX(-22px)} }
+@keyframes slideInRight  { from {opacity:0; transform:translateX(22px)} to {opacity:1; transform:translateX(0)} }
+@keyframes slideOutRight { from {opacity:1; transform:translateX(0)}   to {opacity:0; transform:translateX(22px)} }
+@keyframes slideInLeft   { from {opacity:0; transform:translateX(-22px)} to {opacity:1; transform:translateX(0)} }
+
+.q-pane.slide-out-left  { animation: slideOutLeft  220ms ease both; }
+.q-pane.slide-in-right  { animation: slideInRight  220ms ease both; }
+.q-pane.slide-out-right { animation: slideOutRight 220ms ease both; }
+.q-pane.slide-in-left   { animation: slideInLeft   220ms ease both; }
+
+
+.resp-box.typing {
+    position: relative;
+}
+.resp-box.typing::after {
+    content: "";
+    position: absolute;
+    width: 1px;
+    height: 1.2em;
+    background: currentColor;
+    right: 8px;
+    bottom: 10px;
+    animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }

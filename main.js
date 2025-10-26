@@ -76,6 +76,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn  = document.getElementById('resetBtn');
     const responseBox = document.getElementById('responseBox');
+    const qPane = document.querySelector('.q-pane');
+
+
+    function playOnce(el, cls) {
+        return new Promise(resolve => {
+            const onEnd = () => { el.removeEventListener('animationend', onEnd); el.classList.remove(cls); resolve(); };
+            el.addEventListener('animationend', onEnd, { once: true });
+            // force reflow so repeated animations retrigger reliably
+            void el.offsetWidth;
+            el.classList.add(cls);
+        });
+    }
+
+    async function slideTo(direction, updateFn) {
+        if (!qPane) { updateFn(); return; }
+
+        if (direction === 'next') {
+            await playOnce(qPane, 'slide-out-left');
+            updateFn();                     // re-render content for the next question
+            await playOnce(qPane, 'slide-in-right');
+        } else {
+            await playOnce(qPane, 'slide-out-right');
+            updateFn();                     // re-render content for the previous question
+            await playOnce(qPane, 'slide-in-left');
+        }
+    }
+
+    function typewriter(el, text, { min = 2, max = 5 } = {}) {
+        el.classList.add('typing');
+        el.textContent = '';
+        let i = 0;
+        (function tick() {
+            if (i < text.length) {
+                el.textContent += text[i++];
+                el.scrollTop = el.scrollHeight;
+                // Slightly slower on line-breaks or bullet characters for nice cadence
+                const ch = text[i - 1];
+                const slow = (ch === '\n' || ch === '.' || ch === '•' || ch === '-');
+                const delay = slow ? max : min;
+                setTimeout(tick, delay);
+            } else {
+                el.classList.remove('typing');
+            }
+        })();
+    }
 
     function render() {
         const q = questions[idx];
@@ -178,16 +223,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    prevBtn.addEventListener('click', () => {
+    prevBtn.addEventListener('click', async () => {
         storeCurrent();
-        if (idx > 0) idx--;
-        render();
+        if (idx > 0) {
+            await slideTo('prev', () => { idx--; render(); });
+        }
     });
 
-    nextBtn.addEventListener('click', () => {
+    nextBtn.addEventListener('click', async () => {
         storeCurrent();
-        if (idx < questions.length - 1) idx++;
-        render();
+        if (idx < questions.length - 1) {
+            await slideTo('next', () => { idx++; render(); });
+        }
     });
 
     resetBtn.addEventListener('click', () => {
@@ -220,7 +267,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { reply, error } = await r.json();
-            responseBox.textContent = error ? `Error: ${error}` : reply;
+            if (error) {
+                responseBox.textContent = `Error: ${error}`;
+            } else {
+                typewriter(responseBox, reply);
+            }
+
             responseBox.scrollTop = responseBox.scrollHeight;
         } catch (e) {
             responseBox.textContent = 'Network error contacting the server.';
