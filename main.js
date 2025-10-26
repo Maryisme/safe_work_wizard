@@ -1,35 +1,179 @@
-// Simple multi-question wizard + submit to your Python /chat endpoint
+
 document.addEventListener('DOMContentLoaded', () => {
+
+    // hold all the questions in an array of objects
     const questions = [
-        { label: 'Q1', placeholder: 'answer 1' },
-        { label: 'Q2', placeholder: 'answer 2' },
-        { label: 'Q3', placeholder: 'answer 3' },
+        {
+            id: 'Q1',
+            text: 'Do you feel that you have been bullied or harassed by someone?',
+            type: 'single',
+            options: ['Yes', 'No']
+        },
+        {
+            id: 'Q2',
+            text: 'Was the bullying or harassment from a co-worker?',
+            type: 'single',
+            options: ['Yes', 'No']
+        },
+        {
+            id: 'Q3',
+            text: 'Do you think that your co-worker was trying to humiliate you?',
+            type: 'single',
+            options: ['Yes', 'No', "I don't know"]
+        },
+        {
+            id: 'Q4',
+            text: 'Do you think that your co-worker was trying to intimidate you?',
+            type: 'single',
+            options: ['Yes', 'No', "I don't know"]
+        },
+        {
+            id: 'Q5',
+            text: 'Was the bullying or harassing behaviour connected to any of these?',
+            type: 'multi',
+            options: [
+                'Your Indigenous identity',
+                'Your race',
+                'Your skin colour',
+                'Ancestry',
+                'Where you were born or grew up',
+                'Your religion',
+                'Whether you have parents or children',
+                'Your physical disability',
+                'Your mental disability',
+                'Your biological sex',
+                'Your gender',
+                'Your age',
+                'Your sexual orientation',
+                'Your gender identity or gender expression',
+                'Your political beliefs',
+                'A previous criminal conviction that is not related to your employment',
+                'None of these'
+            ]
+        },
+        {
+            id: 'Q6',
+            text: 'Describe your situation',
+            type: 'text'   // open text box unlike others
+        }
     ];
 
-    let idx = 0;
-    const answers = new Array(questions.length).fill('');
 
+    let idx = 0;
+    // strings for single-select; arrays for multi-select
+    const answers = {};
+    questions.forEach(q => (answers[q.text] = q.type === 'multi' ? [] : ''));
+
+    // DOM
     const qLabel = document.getElementById('qLabel');
-    const answerBox = document.getElementById('answerBox');
+    const qText  = document.getElementById('qText');
+    const group  = document.getElementById('choiceGroup');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const submitBtn = document.getElementById('submitBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    const resetBtn  = document.getElementById('resetBtn');
     const responseBox = document.getElementById('responseBox');
 
     function render() {
         const q = questions[idx];
-        qLabel.textContent = q.label;
-        answerBox.placeholder = q.placeholder;
-        answerBox.value = answers[idx] || '';
+        qLabel.textContent = q.id;
+        qText.textContent  = q.text;
+        group.innerHTML = '';
+
+        group.classList.toggle('no-frame', q.type === 'text');
+
+
+
+        // build choices
+        group.innerHTML = '';
+        if (q.type === 'single') {
+            group.setAttribute('role', 'radiogroup');
+            q.options.forEach((opt, i) => {
+                const id = `q${idx}-opt${i}`;
+                const label = document.createElement('label');
+                label.className = 'choice';
+
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'answer';
+                input.id = id;
+                input.value = opt;
+                input.checked = answers[q.text] === opt;
+
+                const span = document.createElement('span');
+                span.textContent = opt;
+
+                label.append(input, span);
+                group.appendChild(label);
+            });
+        } else if (q.type === 'multi') {
+            group.setAttribute('role', 'group');
+            q.options.forEach((opt, i) => {
+                const id = `q${idx}-opt${i}`;
+                const label = document.createElement('label');
+                label.className = 'choice';
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.name = 'answer-multi';
+                input.id = id;
+                input.value = opt;
+                input.checked = Array.isArray(answers[q.text]) && answers[q.text].includes(opt);
+
+                input.addEventListener('change', () => {
+                    if (opt === 'None of these' && input.checked) {
+                        document.querySelectorAll('input[name="answer-multi"]').forEach(cb => {
+                            if (cb.value !== 'None of these') cb.checked = false;
+                        });
+                    } else if (input.checked) {
+                        const none = [...document.querySelectorAll('input[name="answer-multi"]')].find(cb => cb.value === 'None of these');
+                        if (none) none.checked = false;
+                    }
+                });
+
+                const span = document.createElement('span');
+                span.textContent = opt;
+
+                label.append(input, span);
+                group.appendChild(label);
+            });
+        } else if (q.type === 'text') {
+        group.setAttribute('role', 'group');
+        const textarea = document.createElement('textarea');
+        textarea.id = 'textAnswer';
+        textarea.className = 'answer-box';        // uses your existing textarea styling
+        textarea.placeholder = 'Describe your situation...';
+        textarea.value = typeof answers[q.text] === 'string' ? answers[q.text] : '';
+        group.appendChild(textarea);
+        textarea.focus();                          // optional: auto-focus
+        }
 
         prevBtn.disabled = idx === 0;
         nextBtn.disabled = idx === questions.length - 1;
     }
 
     function storeCurrent() {
-        answers[idx] = answerBox.value.trim();
+        const q = questions[idx];
+        if (q.type === 'single') {
+            const sel = document.querySelector('input[name="answer"]:checked');
+            answers[q.text] = sel ? sel.value : '';
+        } else if (q.type === 'multi') {
+            const sels = [...document.querySelectorAll('input[name="answer-multi"]:checked')].map(n => n.value);
+            answers[q.text] = sels;
+        } else if (q.type === 'text') {
+            const ta = document.getElementById('textAnswer');
+            answers[q.text] = ta ? ta.value.trim() : '';
+        }
     }
+
+    function isAnswered(q) {
+        const val = answers[q.text];
+        if (q.type === 'single') return !!val;
+        if (q.type === 'multi')  return Array.isArray(val) && val.length > 0;
+        if (q.type === 'text')   return typeof val === 'string' && val.trim().length > 0;
+        return false;
+    }
+
 
     prevBtn.addEventListener('click', () => {
         storeCurrent();
@@ -44,41 +188,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     resetBtn.addEventListener('click', () => {
-        for (let i = 0; i < answers.length; i++) answers[i] = '';
+        questions.forEach(q => (answers[q.text] = q.type === 'multi' ? [] : ''));
         idx = 0;
         responseBox.textContent = '';
         render();
-        answerBox.focus();
     });
 
     submitBtn.addEventListener('click', async () => {
         storeCurrent();
-
-        // Require all questions answered
-        const missing = answers.findIndex(v => !v);
-        if (missing !== -1) {
-            idx = missing;
+        const firstMissing = questions.find(q => !isAnswered(q));
+        if (firstMissing) {
+            idx = questions.indexOf(firstMissing);
             render();
-            answerBox.focus();
             return;
         }
 
-        // Compose a concise prompt for your backend
-        const prompt = questions
-            .map((q, i) => `${q.label}: ${answers[i]}`)
-            .join('\n');
-
         responseBox.textContent = 'Thinking…';
-
         try {
-            // POST to your Flask endpoint (change URL/port to your server)
+            const payload = JSON.stringify(answers, null, 2);
+
             const r = await fetch('http://127.0.0.1:5001/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: `Use these answers to provide guidance:\n${prompt}`,
+                    message: `Use this questionnaire to provide guidance.\n${payload}`,
                     history: []
-                }),
+                })
             });
             const { reply, error } = await r.json();
             responseBox.textContent = error ? `Error: ${error}` : reply;
@@ -88,7 +223,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // init
     render();
-    answerBox.focus();
 });

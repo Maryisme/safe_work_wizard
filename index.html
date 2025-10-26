@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="./index.css" />
 </head>
 <body>
-<!-- Navbar (kept dark) -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="/">
@@ -23,34 +22,36 @@
     <h1 class="page-title">Pre-Tribunal Wizard</h1>
 </header>
 
-
 <main class="container wizard-shell">
     <div class="wizard-frame">
-    <section class="wizard-grid">
-        <div class="q-pane card-like">
-            <div class="q-label" id="qLabel">Q1</div>
+        <section class="wizard-grid">
+            <!-- LEFT-->
+            <div class="q-pane card-like">
+                <div class="q-label" id="qLabel">Q1</div>
+                <p id="qText" class="q-text"></p>
 
-            <label class="visually-hidden" for="answerBox">Answer</label>
-            <textarea id="answerBox" class="answer-box form-control" placeholder="answer 1"></textarea>
+                <fieldset id="choiceGroup" class="choice-group" role="group" aria-labelledby="qLabel">
+                    <!-- JS injects checkboxes -->
+                </fieldset>
 
-            <div class="nav-arrows">
-                <button id="prevBtn" class="btn arrow-btn" type="button" aria-label="Previous question">←</button>
-                <button id="nextBtn" class="btn arrow-btn" type="button" aria-label="Next question">→</button>
+                <div class="nav-arrows">
+                    <button id="prevBtn" class="btn arrow-btn" type="button" aria-label="Previous question">←</button>
+                    <button id="nextBtn" class="btn arrow-btn" type="button" aria-label="Next question">→</button>
+                </div>
             </div>
-        </div>
 
+            <!-- RIGHT -->
+            <div class="resp-pane card-like">
+                <div class="resp-title">response</div>
+                <div id="responseBox" class="resp-box"></div>
+            </div>
+        </section>
 
-        <div class="resp-pane card-like">
-            <div class="resp-title">response</div>
-            <div id="responseBox" class="resp-box"></div>
-        </div>
-    </section>
-
-
-    <section class="wizard-actions">
-        <button id="submitBtn" class="btn btn-primary action-btn" type="button">Submit</button>
-        <button id="resetBtn" class="btn btn-outline-secondary action-btn" type="button">Reset</button>
-    </section>
+        <!--bottom actions -->
+        <section class="wizard-actions">
+            <button id="submitBtn" class="btn btn-primary action-btn" type="button">Submit</button>
+            <button id="resetBtn" class="btn btn-outline-secondary action-btn" type="button">Reset</button>
+        </section>
     </div>
 </main>
 

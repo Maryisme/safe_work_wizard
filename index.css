@@ -1,12 +1,10 @@
 
 
-/* Darker app background for contrast */
 body {
     background: #111827;
-    color: #0f172a;        /* restore default dark text for white bg */
+    color: #0f172a;
 }
 
-/* Outer shell margins */
 .wizard-shell {
     margin-top: 2.5rem;
     margin-bottom: 3rem;
@@ -14,10 +12,10 @@ body {
     padding-right: 0.5rem;
 }
 
-/* Visible frame around EVERYTHING (both panes + buttons) */
+
 .wizard-frame {
-    background: #ffffff;          /* near-black panel to separate from page bg */
-    border: 2px solid #ef9ca4;    /* darker rose outline */
+    background: #ffffff;
+    border: 2px solid #ef9ca4;
     border-radius: 26px;
     padding: 1.25rem;
     box-shadow:
@@ -25,50 +23,48 @@ body {
             0 18px 36px rgba(0,0,0,.55);
 }
 
-/* Two-column grid */
+
 .wizard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
 }
 
-/* Card look for both panes (bright against dark frame) */
+
 .card-like {
     background: #ffffff;
-    border: 1px solid #1f2937;    /* slate-800 border for definition */
+    border: 1px solid #1f2937;
     border-radius: 22px;
     box-shadow:
             0 2px 6px rgba(0,0,0,.20),
             0 18px 36px rgba(0,0,0,.20);
     padding: 1.25rem 1.25rem 1rem;
-    color: #0f172a;               /* reset card text to dark for readability */
+    color: #0f172a;
 }
 
-/* =========================
-   Left Pane (Questions)
-   ========================= */
+
 
 .q-pane { display: flex; flex-direction: column; gap: 1rem; }
 
 .q-label {
     font-size: 1.125rem;
     font-weight: 800;
-    color: #d45757;               /* deeper rose for headings */
+    color: #d45757;
     margin-left: .25rem;
 }
 
-/* Large rounded textarea (clear black outline) */
+
 .answer-box {
-    height: 280px;                /* adjust to taste */
+    height: 280px;
     border-radius: 24px;
-    border: 3px solid #111;       /* max contrast outline */
+    border: 3px solid #111;
     padding: 1rem 1.25rem;
     font-size: 1rem;
     resize: vertical;
     background: #ffffff;
     color: #0f172a;
 }
-.answer-box::placeholder { color: #6b7280; } /* slate-500 */
+.answer-box::placeholder { color: #6b7280; }
 .answer-box:focus {
     outline: 0;
     border-color: #0d6efd;
@@ -77,7 +73,6 @@ body {
             inset 0 1px 0 rgba(0,0,0,.05);
 }
 
-/* Arrow buttons row (centered) */
 .nav-arrows {
     display: flex;
     justify-content: center;
@@ -105,9 +100,6 @@ body {
     transform: translateY(1px);
 }
 
-/* =========================
-   Right Pane (Response)
-   ========================= */
 
 .resp-title {
     text-align: center;
@@ -117,7 +109,7 @@ body {
 }
 
 .resp-box {
-    height: 420px;                /* fixed like the sketch; scrolls inside */
+    height: 420px;
     border: 3px solid #d45757;
     border-radius: 26px;
     padding: 1rem 1.25rem;
@@ -126,7 +118,7 @@ body {
     color: #0f172a;
 }
 
-/* Optional nicer scrollbars (WebKit) */
+
 .resp-box::-webkit-scrollbar,
 .answer-box::-webkit-scrollbar { width: 10px; }
 .resp-box::-webkit-scrollbar-thumb,
@@ -171,7 +163,7 @@ body {
 }
 #resetBtn:hover  { background: #f3f4f6; }
 
-/* Legacy classes (kept noop so nothing stretches) */
+
 .submit-btn, .reset-btn { flex: 0 0 auto; }
 
 
@@ -206,11 +198,11 @@ body {
     margin: 1.25rem 0 .5rem;
 }
 .page-title{
-    color: #fff;                     /* white text as requested */
+    color: #fff;
     font-weight: 800;
     font-size: clamp(1.3rem, 2.2vw + .5rem, 2.25rem);
     letter-spacing: .25px;
-    text-shadow: 0 2px 6px rgba(0,0,0,.55); /* keeps readable on dark bg */
+    text-shadow: 0 2px 6px rgba(0,0,0,.55);
     margin: 0;
 }
 
@@ -218,4 +210,70 @@ body {
 @media (max-width: 992px) {
     .wizard-grid { grid-template-columns: 1fr; }
     .resp-box    { height: 300px; }
+}
+
+
+
+
+.choice-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 3px solid #111;
+    border-radius: 24px;
+    background: #fff;
+    color: #0f172a;
+    box-shadow: inset 0 1px 0 rgba(0,0,0,.05);
+    min-height: 220px;
+    align-content: start;
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem .7rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.choice:hover {
+    border-color: #cbd5e1;
+    background: #fafafa;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+
+.choice input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #0d6efd; /* modern browsers */
+}
+
+.choice input[type="radio"]:focus-visible + span {
+    outline: 2px solid rgba(13,110,253,.4);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.choice input[type="radio"]:checked + span {
+    font-weight: 600;
+}
+
+
+.q-text{
+    margin: 0 .25rem .25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.choice-group.no-frame {
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+    min-height: 0;
 }
