@@ -14,10 +14,20 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("Set OPENAI_API_KEY in your .env file.")
 
-MODEL = "gpt-4o-mini"
+# Models
+EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL",
+                        "text-embedding-3-large")  # must match ingestion
+MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# Chroma paths/collections
 CHROMA_PATH = "data/chroma"
 LEGIS_COLLECTION = "legislation_policy"
 CASES_COLLECTION = "legal_cases"
+
+# Retrieval controls (same as notebook)
+TOPK_A, TOPK_B = 8, 3
+BUDGET_A, BUDGET_B = 2500, 2000   # total char budgets for prompt sections
+CAP_A, CAP_B = 900, 900           # per-chunk char caps
 
 # ------------------------------------------------------
 # Init Flask
@@ -26,84 +36,147 @@ app = Flask(__name__)
 CORS(app, resources={r"/chat": {"origins": "*"}})
 
 # ------------------------------------------------------
-# Init Chroma
+# Init OpenAI + Chroma (Chroma >= 0.5: no embedding_function)
 # ------------------------------------------------------
-client = chromadb.PersistentClient(path=CHROMA_PATH)
-collA = client.get_collection(LEGIS_COLLECTION)
-collB = client.get_collection(CASES_COLLECTION)
+oai = OpenAI(api_key=OPENAI_API_KEY)
+chroma = chromadb.PersistentClient(path=CHROMA_PATH)
+collA = chroma.get_collection(LEGIS_COLLECTION)  # legislation/policy
+collB = chroma.get_collection(CASES_COLLECTION)  # cases/tribunals
 
 # ------------------------------------------------------
-# Helper: retrieve relevant chunks
+# Helpers: embed, format sources, retrieve (query_embeddings)
 # ------------------------------------------------------
 
 
-def retrieve(collection, query, k, prefix):
+def _embed_one(text: str):
+    return oai.embeddings.create(model=EMBED_MODEL, input=[text]).data[0].embedding
+
+
+def _format_source(meta: dict) -> str:
+    url = (meta or {}).get("source_url") or (meta or {}).get("url")
+    fname = (meta or {}).get("filename", "")
+    return f"Source: {fname} — {url}" if url else f"Source: {fname}"
+
+
+def _retrieve(collection, query, k, max_chars, per_chunk_cap, prefix):
+    """
+    Retrieve top chunks with truncation and label them like:
+      [A1 filename#chunk_index]
+      Source: <fname> — <url>
+      <text>
+    Returns (block_text, used_count, used_struct_list)
+    """
     try:
-        res = collection.query(query_texts=[query], n_results=k)
-        results = []
-        for i, doc in enumerate(res["documents"][0]):
-            filename = res["metadatas"][0][i].get("filename", "unknown")
-            results.append(f"[{prefix}{i+1}] ({filename})\n{doc.strip()}")
-        return "\n\n".join(results)
+        qe = _embed_one(query)
+        res = collection.query(query_embeddings=[qe], n_results=k)
     except Exception as e:
-        return f"(error retrieving {prefix}): {e}"
+        label = f"[{prefix}1]"
+        msg = f"{label} Retrieval failed: {e}"
+        return msg, 0, [{"type": prefix, "label": label, "error": str(e)}]
+
+    if not res.get("ids") or not res["ids"][0]:
+        return "", 0, []
+
+    items, total = [], 0
+    used = []
+    for i in range(len(res["ids"][0])):
+        text = (res["documents"][0][i] or "").strip()
+        if not text:
+            continue
+        if len(text) > per_chunk_cap:
+            text = text[:per_chunk_cap]
+        meta = res["metadatas"][0][i] or {}
+        label = f"[{prefix}{len(items)+1} {meta.get('filename','')}#{str(meta.get('chunk_index', i))}]"
+        src = _format_source(meta)
+        chunk_text = label + "\n" + src + "\n" + text
+
+        items.append(chunk_text)
+        used.append({
+            "type": prefix,
+            "label": label,
+            "filename": meta.get("filename"),
+            "chunk_index": meta.get("chunk_index", i),
+            "source_url": meta.get("source_url") or meta.get("url"),
+            "text": text
+        })
+
+        total += len(text)
+        if total >= max_chars:
+            break
+
+    return "\n\n".join(items), len(items), used
 
 # ------------------------------------------------------
-# Helper: build the prompt
+# Prompt: EXACTLY the same as the (fixed) notebook flow
 # ------------------------------------------------------
 
 
-def build_prompt(user_input, legis_text, case_text):
+def _build_prompt(user_situation: str, A_block: str, B_block: str, has_cases: bool):
     system = (
-        "You are a BC workplace harassment triage assistant. "
-        "Base your judgment on legislation excerpts (Section A) only. "
-        "Use cases (Section B) only for supporting context — omit them if none are relevant. "
-        "Do NOT invent cases or legal definitions."
+        "You are a BC workplace triage explainer. "
+        "Use legislation/policy excerpts to assess whether the described conduct likely qualifies as bullying or harassment. "
+        "Base your analysis ONLY on the Legislation Excerpts (Section A). "
+        "List exact sources you rely on by name/URL as shown in the excerpts. "
+        "If NO case excerpts are provided, OMIT the 'Similar Tribunal Decisions' section entirely. "
+        "If case excerpts are provided, you may include a brief 'Similar Tribunal Decisions' section using ONLY those case excerpts; "
+        "do not invent or imply the existence of other cases. "
+        "Never invent sources or citations."
     )
 
-    user = f"""
-User situation:
----
-{user_input.strip()}
+    section_b = ""
+    if has_cases and B_block.strip():
+        section_b = (
+            "\n\nSection B — Case Excerpts (context only; do not change your decision based on these):\n---\n"
+            + B_block
+        )
 
-Section A — Legislation Excerpts:
----
-{legis_text}
+    user = (
+        "User Situation:\n---\n" + user_situation.strip() + "\n\n"
+        "Section A — Legislation Excerpts (authoritative; use these to assess and justify):\n---\n"
+        + (A_block.strip() if A_block.strip() else "(none retrieved)")
+        + section_b
+        + "\n\nYour tasks:\n"
+        "1) Assessment under the Law & Policy (use ONLY Section A):\n"
+        "   - Return one of: 'very likely', 'likely', 'borderline', or 'unlikely'.\n"
+        "   - Provide 3–5 bullets mapping the user's facts to legal elements. Quote sparingly and refer to the provided sources by name/URL.\n"
+        "2) Confidence: repeat the likelihood from #1.\n"
+    )
 
-Section B — Case Excerpts (optional):
----
-{case_text}
+    if has_cases:
+        user += (
+            "3) Similar Tribunal Decisions (context only): list 1–3 items drawn ONLY from the case excerpts above; "
+            "1–2 lines each; include outcome; cite by the provided source names/URLs.\n"
+        )
+    else:
+        user += "3) Do not include a 'Similar Tribunal Decisions' section (no case excerpts were provided).\n"
 
-Instructions:
-1. Determine if the user's experience qualifies as workplace bullying or harassment under BC law.
-2. Return one of: 'very likely', 'likely', 'borderline', 'unlikely'.
-3. Explain reasoning with 3–5 concise bullets citing the legislation sources (e.g. [A1]).
-4. If any cases in Section B are relevant, summarize up to 2 briefly; otherwise omit that section entirely.
-5. Provide 3–5 next steps.
-6. End with one-line disclaimer that this is not legal advice.
-"""
+    user += (
+        "4) Next Steps: 3–5 actionable steps consistent with your assessment.\n"
+        "5) Sources: list the specific Section A sources (by name/URL) you relied on.\n"
+        "6) Disclaimer: one line that this is general information, not legal advice."
+    )
+
     return {"system": system, "user": user}
 
 # ------------------------------------------------------
-# Helper: call OpenAI
+# LLM call
 # ------------------------------------------------------
 
 
-def call_llm(prompt):
+def _call_llm(prompt):
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        resp = client.chat.completions.create(
+        resp = oai.chat.completions.create(
             model=MODEL,
             messages=[
                 {"role": "system", "content": prompt["system"]},
                 {"role": "user", "content": prompt["user"]},
             ],
-            temperature=0.2,
+            temperature=0.1,
             max_tokens=900,
         )
         return resp.choices[0].message.content
     except Exception as e:
-        return f"LLM error: {e}"
+        return f"**LLM call failed:** {e}"
 
 # ------------------------------------------------------
 # Routes
@@ -113,9 +186,11 @@ def call_llm(prompt):
 @app.get("/healthz")
 def healthz():
     try:
-        countA = collA.count()
-        countB = collB.count()
-        return jsonify({"ok": True, "legislation_chunks": countA, "cases_chunks": countB})
+        return jsonify({
+            "ok": True,
+            "legislation_chunks": collA.count(),
+            "cases_chunks": collB.count()
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -132,16 +207,35 @@ def chat():
     if not data or "message" not in data:
         return jsonify({"error": "Missing 'message'"}), 400
 
-    user_msg = data["message"]
-    query_A = "bullying harassment WorkSafeBC definition repeated serious incident"
-    query_B = "supervisor yelling insults tribunal decision outcome"
+    user_msg = (data["message"] or "").strip()
+    if not user_msg:
+        return jsonify({"error": "Empty 'message'"}), 400
 
-    legis_text = retrieve(collA, query_A, k=6, prefix="A")
-    case_text = retrieve(collB, query_B, k=3, prefix="B")
+    # Retrieval uses the user's message directly (no hardcoded seed queries)
+    A_block, nA, used_A = _retrieve(
+        collA, user_msg, TOPK_A, BUDGET_A, CAP_A, prefix="A")
+    B_block, nB, used_B = _retrieve(
+        collB, user_msg, TOPK_B, BUDGET_B, CAP_B, prefix="B")
 
-    prompt = build_prompt(user_msg, legis_text, case_text)
-    reply = call_llm(prompt)
-    return jsonify({"reply": reply})
+    # Guardrail: do not answer if Section A failed or is empty
+    if nA == 0:
+        return jsonify({
+            "error": "retrieval_failed_for_legislation",
+            "resources": {"A_block": A_block, "used_A": used_A}
+        }), 503
+
+    prompt = _build_prompt(user_msg, A_block, B_block, has_cases=(nB > 0))
+    reply = _call_llm(prompt)
+
+    # Reply mirrors notebook structure; also return the exact source blocks for transparency
+    return jsonify({
+        "reply": reply,
+        "resources": {
+            "A_block": A_block,
+            "B_block": B_block,
+            "used": used_A + used_B
+        }
+    })
 
 
 # ------------------------------------------------------
