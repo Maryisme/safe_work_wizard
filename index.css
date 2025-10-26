@@ -1,126 +1,221 @@
 
+
+/* Darker app background for contrast */
 body {
-    background: #f6f7f9;
+    background: #111827;
+    color: #0f172a;        /* restore default dark text for white bg */
 }
 
-
-.page-center {
-    min-height: 70vh;
-    height: calc(80vh - 72px - 3rem);
-    max-height: 820px;
-    width: min(900px, 92vw);
-    margin-top: 5.5rem;
+/* Outer shell margins */
+.wizard-shell {
+    margin-top: 2.5rem;
     margin-bottom: 3rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
 
-    background: #fff;
-    border-radius: 16px;
+/* Visible frame around EVERYTHING (both panes + buttons) */
+.wizard-frame {
+    background: #ffffff;          /* near-black panel to separate from page bg */
+    border: 2px solid #ef9ca4;    /* darker rose outline */
+    border-radius: 26px;
+    padding: 1.25rem;
     box-shadow:
-            0 1px 3px rgba(16,24,40,.06),
-            0 12px 24px rgba(16,24,40,.08);
-
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    padding: 1rem;
-    gap: 0.75rem;
-    overflow: hidden;
-
-    border: 3px solid black;
+            0 2px 6px rgba(0,0,0,.45),
+            0 18px 36px rgba(0,0,0,.55);
 }
 
+/* Two-column grid */
+.wizard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
 
-.chat-content {
-    flex: 1 1 auto;
-    min-height: 0;
+/* Card look for both panes (bright against dark frame) */
+.card-like {
+    background: #ffffff;
+    border: 1px solid #1f2937;    /* slate-800 border for definition */
+    border-radius: 22px;
+    box-shadow:
+            0 2px 6px rgba(0,0,0,.20),
+            0 18px 36px rgba(0,0,0,.20);
+    padding: 1.25rem 1.25rem 1rem;
+    color: #0f172a;               /* reset card text to dark for readability */
+}
+
+/* =========================
+   Left Pane (Questions)
+   ========================= */
+
+.q-pane { display: flex; flex-direction: column; gap: 1rem; }
+
+.q-label {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: #d45757;               /* deeper rose for headings */
+    margin-left: .25rem;
+}
+
+/* Large rounded textarea (clear black outline) */
+.answer-box {
+    height: 280px;                /* adjust to taste */
+    border-radius: 24px;
+    border: 3px solid #111;       /* max contrast outline */
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    resize: vertical;
+    background: #ffffff;
+    color: #0f172a;
+}
+.answer-box::placeholder { color: #6b7280; } /* slate-500 */
+.answer-box:focus {
+    outline: 0;
+    border-color: #0d6efd;
+    box-shadow:
+            0 0 0 3px rgba(13,110,253,.30),
+            inset 0 1px 0 rgba(0,0,0,.05);
+}
+
+/* Arrow buttons row (centered) */
+.nav-arrows {
     display: flex;
-    flex-direction: column;
-    gap: .6rem;
-    padding: .25rem .25rem 0;
+    justify-content: center;
+    align-items: center;
+    gap: 1.75rem;
+    padding: .25rem 0 .1rem;
+}
+.arrow-btn {
+    min-width: 56px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 2px solid #d45757;
+    color: #0f172a;
+    font-size: 1.25rem;
+    line-height: 1;
+    box-shadow:
+            0 1px 2px rgba(0,0,0,.10),
+            0 6px 12px rgba(0,0,0,.10);
+}
+.arrow-btn:hover {
+    background: #ffe1e1;
+    border-color: #b73e3e;
+}
+.arrow-btn:active {
+    transform: translateY(1px);
+}
+
+/* =========================
+   Right Pane (Response)
+   ========================= */
+
+.resp-title {
+    text-align: center;
+    color: #d45757;
+    font-weight: 800;
+    margin-bottom: .5rem;
+}
+
+.resp-box {
+    height: 420px;                /* fixed like the sketch; scrolls inside */
+    border: 3px solid #d45757;
+    border-radius: 26px;
+    padding: 1rem 1.25rem;
     overflow-y: auto;
-    scroll-behavior: smooth;
+    background: #fff;
+    color: #0f172a;
+}
+
+/* Optional nicer scrollbars (WebKit) */
+.resp-box::-webkit-scrollbar,
+.answer-box::-webkit-scrollbar { width: 10px; }
+.resp-box::-webkit-scrollbar-thumb,
+.answer-box::-webkit-scrollbar-thumb {
+    background: #cbd5e1;         /* slate-300 */
+    border-radius: 8px;
+}
+.resp-box::-webkit-scrollbar-track,
+.answer-box::-webkit-scrollbar-track { background: transparent; }
+
+
+
+.wizard-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.action-btn {
+    min-width: 120px;
+    padding: .6rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid #1f2937;
+    box-shadow:
+            0 1px 2px rgba(0,0,0,.15),
+            0 6px 12px rgba(0,0,0,.15);
 }
 
 
-.msg { display: flex; }
-.msg.me { justify-content: flex-end; }
-.msg.bot { justify-content: flex-start; }
-
-.bubble {
-    max-width: 75%;
-    padding: .6rem .8rem;
-    border-radius: 18px;
-    line-height: 1.35;
-    word-break: break-word;
-    position: relative;
-    box-shadow: 0 1px 1px rgba(16,24,40,.06);
-    font-size: 0.95rem;
-}
-
-
-.msg.me .bubble {
+#submitBtn {
     background: #0d6efd;
     color: #fff;
-    border-top-right-radius: 8px;
+    border-color: #0b5ed7;
+}
+#submitBtn:hover { filter: brightness(0.95); }
+
+#resetBtn {
+    background: #ffffff;
+    color: #0f172a;
+}
+#resetBtn:hover  { background: #f3f4f6; }
+
+/* Legacy classes (kept noop so nothing stretches) */
+.submit-btn, .reset-btn { flex: 0 0 auto; }
+
+
+
+.answer-box,
+.resp-box {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) inset,
+    0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-.msg.me .bubble::after {
-    content: "";
-    position: absolute;
-    right: -4px; bottom: 6px;
-    width: 8px; height: 8px;
-    background: #0d6efd;
-    border-bottom-left-radius: 8px;
-    transform: rotate(45deg);
+.q-pane.card-like,
+.resp-pane.card-like {
+    /* darker outline + deeper drop shadows */
+    border: 1px solid rgba(7, 10, 18, 0.8);
+    box-shadow:
+            0 10px 24px rgba(0, 0, 0, 0.25),
+            0 28px 56px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 120ms ease, transform 120ms ease;
 }
 
-.msg.bot .bubble {
-    background: #f2f4f7;
-    color: #101828;
-    border-top-left-radius: 8px;
-}
-.msg.bot .bubble::after {
-    content: "";
-    position: absolute;
-    left: -4px; bottom: 6px;
-    width: 8px; height: 8px;
-    background: #f2f4f7;
-    border-bottom-right-radius: 8px;
-    transform: rotate(45deg);
+.q-pane.card-like:hover,
+.resp-pane.card-like:hover {
+    transform: translateY(-2px);
+    box-shadow:
+            0 14px 32px rgba(0, 0, 0, 0.40),
+            0 36px 72px rgba(0, 0, 0, 0.45);
 }
 
-/* change input bar at the bottom */
-.chat-input {
-    display: flex;
-    gap: .5rem;
-    align-items: center;
 
-    border-top: 1px solid #eef1f4;
-    padding-top: .75rem;
-    margin-top: .25rem;
-    flex: 0 0 auto;
-}
-
-.chat-input input[type="text"] {
-    border-radius: 12px;
-    border: 1px solid #d0d5dd;
-    padding: .65rem .9rem;
-    outline: none;
-    transition: border-color .15s ease;
-}
-.chat-input input[type="text"]:focus {
-    border-color: #84adff;
-    box-shadow: 0 0 0 3px rgba(13,110,253,.15);
-}
-
-.chat-input .btn {
-    border-radius: 12px;
-    padding: .6rem 1rem;
-}
-
-.chat-title {
-    color: #667085;
-    font-weight: 600;
-    letter-spacing: .2px;
-    margin: .25rem 0 0.25rem;
+.page-title-wrap{
     text-align: center;
+    margin: 1.25rem 0 .5rem;
+}
+.page-title{
+    color: #fff;                     /* white text as requested */
+    font-weight: 800;
+    font-size: clamp(1.3rem, 2.2vw + .5rem, 2.25rem);
+    letter-spacing: .25px;
+    text-shadow: 0 2px 6px rgba(0,0,0,.55); /* keeps readable on dark bg */
+    margin: 0;
+}
+
+
+@media (max-width: 992px) {
+    .wizard-grid { grid-template-columns: 1fr; }
+    .resp-box    { height: 300px; }
 }
