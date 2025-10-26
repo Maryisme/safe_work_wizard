@@ -1,6 +1,9 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    const API_BASE = window.API_BASE || 'http://127.0.0.1:5001';
+
+
     // hold all the questions in an array of objects
     const questions = [
         {
@@ -207,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const payload = JSON.stringify(answers, null, 2);
 
-            const r = await fetch('http://127.0.0.1:5001/chat', {
+            const r = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -215,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     history: []
                 })
             });
+
             const { reply, error } = await r.json();
             responseBox.textContent = error ? `Error: ${error}` : reply;
             responseBox.scrollTop = responseBox.scrollHeight;
